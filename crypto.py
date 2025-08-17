@@ -13,13 +13,18 @@ class Crypto:
         try:
             with open(KEY_FILE, 'rb') as f:
                 data = f.read()
-        except FileNotFoundError:
+                if not data:  # File exists but is empty
+                    raise ValueError("Empty key file")
+                decoded_key = base64.urlsafe_b64decode(data)
+                if len(decoded_key) == 0:  # Decoded key is empty
+                    raise ValueError("Empty decoded key")
+                return decoded_key
+        except (FileNotFoundError, ValueError, Exception):
+            # Generate new key if file doesn't exist, is empty, or corrupted
             key = os.urandom(32)
             with open(KEY_FILE, 'wb') as f:
                 f.write(base64.urlsafe_b64encode(key))
             return key
-        else:
-            return base64.urlsafe_b64decode(data)
     
     def encrypt(self, plaintext: str) -> str:
         raw = plaintext.encode('utf-8')
@@ -33,5 +38,7 @@ class Crypto:
     
     def xor_bytes(self, data: bytes) -> bytes:
         k = self.key
+        if len(k) == 0:
+            raise ValueError("Encryption key is empty")
         return bytes(b ^ k[i % len(k)] for i, b in enumerate(data))
     
